@@ -1,0 +1,54 @@
+name: CI
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+
+permissions:
+    contents: read
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+env:
+    CARGO_TERM_COLOR: always
+
+jobs:
+    rust:
+        name: Rust CI
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
+
+            - name: Show Rust toolchain
+              run: |
+                  rustup show active-toolchain
+                  rustc --version
+                  cargo --version
+                  rustfmt --version
+                  cargo clippy --version
+
+            - name: Cache Rust
+              uses: Swatinem/rust-cache@v2
+
+            - name: Check formatting
+              run: cargo fmt --all -- --check
+
+            - name: Check
+              run: cargo check --all-targets --all-features --locked
+
+            - name: Clippy
+              run: cargo clippy --all-targets --all-features --locked -- -D warnings
+
+            - name: Test
+              run: cargo test --all-targets --all-features --locked
